@@ -72,11 +72,12 @@ async function getDetails(target, subtarget) {
   try {
     const $ = await fetchHTML(packagesUrl);
     $('a').each((index, element) => {
-      const name = $(element).attr('href');
-      if (name && name.startsWith('kernel-')) {
-        const vermagicMatch = name.match(/kernel-\d+\.\d+\.\d+(?:-\d+)?[-~]([a-f0-9]+)(?:-r\d+)?_([a-zA-Z0-9_-]+)\.apk$/);
+     const name = $(element).attr('href');
+     if (name && name.startsWith('kernel-')) {
+           const vermagicMatch = name.match(/kernel-\d+\.\d+\.\d+(?:-\d+)?[-~]([a-f0-9]+)(?:-r\d+)?_([a-zA-Z0-9_-]+)\.apk$/);
         if (vermagicMatch) {
-          vermagic = vermagicMatch[1];
+        vermagic = vermagicMatch[1];
+        pkgarch = vermagicMatch[2];
         }
       }
     });
