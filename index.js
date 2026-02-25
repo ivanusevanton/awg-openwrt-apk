@@ -60,7 +60,7 @@ async function getDetails(target, subtarget) {
   $('a').each((index, element) => {
     const name = $(element).attr('href');
     if (name && name.startsWith('kernel_')) {
-      const vermagicMatch = name.match(/kernel_\d+\.\d+\.\d+(?:-\d+)?[-~]([a-f0-9]+)(?:-r\d+)?_([a-zA-Z0-9_-]+)\.apk$/);
+      const vermagicMatch = name.match(/kernel_.*[-~]([a-f0-9]+)(?:-r\d+)?_([a-zA-Z0-9_-]+)\.apk$/);
       if (vermagicMatch) {
         vermagic = vermagicMatch[1];
         pkgarch = vermagicMatch[2];
