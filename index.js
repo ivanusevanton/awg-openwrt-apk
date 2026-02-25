@@ -57,47 +57,39 @@ async function getDetails(target, subtarget) {
   let vermagic = '';
   let pkgarch = '';
 
-  // 1. Пытаемся найти pkgarch в тексте страницы (OpenWrt обычно пишет "Packages for architecture: ...")
-  const pageText = $('body').text();
-  const archMatch = pageText.match(/Packages for architecture:\s+([a-zA-Z0-9_-]+)/i);
-  if (archMatch) {
-    pkgarch = archMatch[1];
-  }
-
+  // 1. Ищем файл ядра (начинается на kernel-) и извлекаем vermagic
   $('a').each((index, element) => {
     const name = $(element).attr('href');
-    
-    // 2. Ищем файл ядра (теперь он начинается на kernel-)
     if (name && name.startsWith('kernel-')) {
-      // Обновленный Regex для новых версий (хеш после тильды)
-      const vermagicMatch = name.match(/kernel-.*?~([a-f0-9]+)(?:-r\d+)?(?:_|-)?(.*?)\.apk$/);
-      
+      // Ищем хеш после тильды ~
+      const vermagicMatch = name.match(/kernel-.*?~([a-f0-9]+)/);
       if (vermagicMatch) {
         vermagic = vermagicMatch[1];
-        // Если pkgarch не нашли выше, пробуем взять остаток из имени файла (если он там есть)
-        if (!pkgarch && vermagicMatch[2]) {
-          pkgarch = vermagicMatch[2];
-        }
       }
     }
   });
 
-  // 3. если всё еще пусто, берем pkgarch из ссылки на базовый репозиторий
-  if (!pkgarch) {
-    try {
-      // Ищем ссылку на основной репозиторий пакетов, которая всегда содержит архитектуру
-      const baseRepoLink = $('a').filter((i, el) => $(el).text().includes('base')).first().attr('href');
-      if (baseRepoLink) {
-        // Ссылка обычно вида ../../../packages/aarch64_cortex-a53/base
-        const parts = baseRepoLink.split('/');
-        const archIndex = parts.indexOf('packages');
-        if (archIndex !== -1 && parts[archIndex + 1]) {
-          pkgarch = parts[archIndex + 1];
-        }
+  // 2. Ищем архитектуру (pkgarch) через ссылки на соседние репозитории (base/luci/etc)
+  // На странице всегда есть ссылки вида "../../packages/ARCHITECTURE/base/"
+  $('a').each((index, element) => {
+    const href = $(element).attr('href');
+    if (href && href.includes('/packages/') && href.includes('/base')) {
+      const parts = href.split('/');
+      const pkgIndex = parts.indexOf('packages');
+      if (pkgIndex !== -1 && parts[pkgIndex + 1]) {
+        pkgarch = parts[pkgIndex + 1];
+        return false; // Прекратить цикл, если нашли
       }
-    } catch (e) {
-      console.error("Failed to fallback arch detection");
     }
+  });
+
+  // 3. Запасной вариант: если ссылка относительная (просто ARCH/base/)
+  if (!pkgarch) {
+     const baseLink = $('a:contains("base")').first().attr('href');
+     if (baseLink) {
+       const parts = baseLink.split('/').filter(p => p && p !== '..');
+       if (parts.length >= 2) pkgarch = parts[0];
+     }
   }
 
   return { vermagic, pkgarch };
