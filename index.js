@@ -75,7 +75,7 @@ async function getDetails(target, subtarget) {
       const name = $(element).attr('href');
       if (name && name.startsWith('kernel_')) {
         // Упрощенная регулярка: ищем только vermagic-хэш.
-        const vermagicMatch = name.match(/kernel_\d+\.\d+\.\d+(?:-\d+)?[-~]([a-f0-9]+)/);
+        const vermagicMatch = name.match(/kernel-\d+\.\d+\.\d+(?:-\d+)?[-~]([a-f0-9]+)(?:-r\d+)?_([a-zA-Z0-9_-]+)\.apk$/);
         if (vermagicMatch) {
           vermagic = vermagicMatch[1];
         }
