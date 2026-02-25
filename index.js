@@ -57,16 +57,48 @@ async function getDetails(target, subtarget) {
   let vermagic = '';
   let pkgarch = '';
 
+  // 1. Пытаемся найти pkgarch в тексте страницы (OpenWrt обычно пишет "Packages for architecture: ...")
+  const pageText = $('body').text();
+  const archMatch = pageText.match(/Packages for architecture:\s+([a-zA-Z0-9_-]+)/i);
+  if (archMatch) {
+    pkgarch = archMatch[1];
+  }
+
   $('a').each((index, element) => {
     const name = $(element).attr('href');
-    if (name && name.startsWith('kernel_')) {
-      const vermagicMatch = name.match(/kernel-.*?~([a-f0-9]+)(?:-r\d+)?(?:_|-)([a-zA-Z0-9_-]+)\.apk$/);
+    
+    // 2. Ищем файл ядра (теперь он начинается на kernel-)
+    if (name && name.startsWith('kernel-')) {
+      // Обновленный Regex для новых версий (хеш после тильды)
+      const vermagicMatch = name.match(/kernel-.*?~([a-f0-9]+)(?:-r\d+)?(?:_|-)?(.*?)\.apk$/);
+      
       if (vermagicMatch) {
         vermagic = vermagicMatch[1];
-        pkgarch = vermagicMatch[2];
+        // Если pkgarch не нашли выше, пробуем взять остаток из имени файла (если он там есть)
+        if (!pkgarch && vermagicMatch[2]) {
+          pkgarch = vermagicMatch[2];
+        }
       }
     }
   });
+
+  // 3. если всё еще пусто, берем pkgarch из ссылки на базовый репозиторий
+  if (!pkgarch) {
+    try {
+      // Ищем ссылку на основной репозиторий пакетов, которая всегда содержит архитектуру
+      const baseRepoLink = $('a').filter((i, el) => $(el).text().includes('base')).first().attr('href');
+      if (baseRepoLink) {
+        // Ссылка обычно вида ../../../packages/aarch64_cortex-a53/base
+        const parts = baseRepoLink.split('/');
+        const archIndex = parts.indexOf('packages');
+        if (archIndex !== -1 && parts[archIndex + 1]) {
+          pkgarch = parts[archIndex + 1];
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fallback arch detection");
+    }
+  }
 
   return { vermagic, pkgarch };
 }
