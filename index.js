@@ -58,7 +58,7 @@ async function getDetails(target, subtarget) {
   let vermagic = '';
   let pkgarch = '';
 
-  // 1. Извлекаем pkgarch из profiles.json (самый надежный способ для OpenWRT)
+  // Извлекаем pkgarch из profiles.json
   try {
     const { data } = await axios.get(profilesUrl);
     if (data && data.arch_packages) {
@@ -68,7 +68,7 @@ async function getDetails(target, subtarget) {
     console.error(`Error fetching profiles.json for ${target}/${subtarget}: ${error.message}`);
   }
 
-  // 2. Извлекаем vermagic из имени файла ядра
+  // Извлекаем vermagic из имени файла ядра
   try {
     const $ = await fetchHTML(packagesUrl);
     $('a').each((index, element) => {
