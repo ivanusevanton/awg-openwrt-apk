@@ -53,43 +53,36 @@ async function getSubtargets(target) {
 
 async function getDetails(target, subtarget) {
   const packagesUrl = `${url}${target}/${subtarget}/packages/`;
-  const $ = await fetchHTML(packagesUrl);
+  const profilesUrl = `${url}${target}/${subtarget}/profiles.json`;
+  
   let vermagic = '';
   let pkgarch = '';
 
-  // 1. Ищем файл ядра (начинается на kernel-) и извлекаем vermagic
-  $('a').each((index, element) => {
-    const name = $(element).attr('href');
-    if (name && name.startsWith('kernel-')) {
-      // Ищем хеш после тильды ~
-      const vermagicMatch = name.match(/kernel-.*?~([a-f0-9]+)/);
-      if (vermagicMatch) {
-        vermagic = vermagicMatch[1];
-      }
+  // 1. Извлекаем pkgarch из profiles.json (самый надежный способ для OpenWRT)
+  try {
+    const { data } = await axios.get(profilesUrl);
+    if (data && data.arch_packages) {
+      pkgarch = data.arch_packages;
     }
-  });
+  } catch (error) {
+    console.error(`Error fetching profiles.json for ${target}/${subtarget}: ${error.message}`);
+  }
 
-  // 2. Ищем архитектуру (pkgarch) через ссылки на соседние репозитории (base/luci/etc)
-  // На странице всегда есть ссылки вида "../../packages/ARCHITECTURE/base/"
-  $('a').each((index, element) => {
-    const href = $(element).attr('href');
-    if (href && href.includes('/packages/') && href.includes('/base')) {
-      const parts = href.split('/');
-      const pkgIndex = parts.indexOf('packages');
-      if (pkgIndex !== -1 && parts[pkgIndex + 1]) {
-        pkgarch = parts[pkgIndex + 1];
-        return false; // Прекратить цикл, если нашли
+  // 2. Извлекаем vermagic из имени файла ядра
+  try {
+    const $ = await fetchHTML(packagesUrl);
+    $('a').each((index, element) => {
+      const name = $(element).attr('href');
+      if (name && name.startsWith('kernel_')) {
+        // Упрощенная регулярка: ищем только vermagic-хэш.
+        const vermagicMatch = name.match(/kernel_\d+\.\d+\.\d+(?:-\d+)?[-~]([a-f0-9]+)/);
+        if (vermagicMatch) {
+          vermagic = vermagicMatch[1];
+        }
       }
-    }
-  });
-
-  // 3. Запасной вариант: если ссылка относительная (просто ARCH/base/)
-  if (!pkgarch) {
-     const baseLink = $('a:contains("base")').first().attr('href');
-     if (baseLink) {
-       const parts = baseLink.split('/').filter(p => p && p !== '..');
-       if (parts.length >= 2) pkgarch = parts[0];
-     }
+    });
+  } catch (error) {
+    console.error(`Error fetching packages HTML for ${target}/${subtarget}: ${error.message}`);
   }
 
   return { vermagic, pkgarch };
